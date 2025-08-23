@@ -4,32 +4,57 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { CheckCircle, Clock, Users, Award, ArrowRight, Video, Mic, Shield } from 'lucide-react';
+import { CheckCircle, Clock, Users, Award, ArrowRight, Video, Mic, Shield, LogOut } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
-interface CandidateData {
+interface ProfileData {
   name: string;
-  email: string;
-  jobRole: string;
+  job_role: string;
 }
 
 const HomePage = () => {
-  const [candidateData, setCandidateData] = useState<CandidateData | null>(null);
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
-    const stored = sessionStorage.getItem('candidate');
-    if (!stored) {
-      navigate('/');
+    if (user) {
+      fetchProfile();
+    }
+  }, [user]);
+
+  const fetchProfile = async () => {
+    if (!user) return;
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('name, job_role')
+      .eq('user_id', user.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching profile:', error);
       return;
     }
-    setCandidateData(JSON.parse(stored));
-  }, [navigate]);
+
+    setProfileData(data);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/auth');
+  };
 
   const handleStartInterview = () => {
     navigate('/interview');
   };
 
-  if (!candidateData) return null;
+  if (!profileData) return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-navy">
@@ -46,11 +71,21 @@ const HomePage = () => {
                 <p className="text-sm text-muted-foreground">AI-Powered Recruitment</p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-foreground">Welcome, {candidateData.name}</p>
-              <Badge variant="outline" className="text-xs border-electric-blue text-electric-blue">
-                {candidateData.jobRole}
-              </Badge>
+            <div className="flex items-center space-x-4">
+              <div className="text-right">
+                <p className="text-sm text-foreground">Welcome, {profileData.name}</p>
+                <Badge variant="outline" className="text-xs border-electric-blue text-electric-blue">
+                  {profileData.job_role}
+                </Badge>
+              </div>
+              <Button 
+                onClick={handleLogout} 
+                variant="outline" 
+                size="sm"
+                className="hover:bg-destructive hover:text-destructive-foreground"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
             </div>
           </div>
         </div>
@@ -157,7 +192,7 @@ const HomePage = () => {
                   </div>
                   <CardTitle className="text-xl text-foreground">Ready to Begin?</CardTitle>
                   <CardDescription className="text-muted-foreground">
-                    Start your AI-powered interview for the {candidateData.jobRole} position
+                    Start your AI-powered interview for the {profileData.job_role} position
                   </CardDescription>
                 </CardHeader>
                 
