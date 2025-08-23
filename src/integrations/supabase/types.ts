@@ -14,7 +14,220 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      answers: {
+        Row: {
+          answer_text: string | null
+          created_at: string
+          feedback: string | null
+          id: string
+          interview_id: string
+          question_id: string
+          score: number | null
+          time_taken: number | null
+        }
+        Insert: {
+          answer_text?: string | null
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          interview_id: string
+          question_id: string
+          score?: number | null
+          time_taken?: number | null
+        }
+        Update: {
+          answer_text?: string | null
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          interview_id?: string
+          question_id?: string
+          score?: number | null
+          time_taken?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "answers_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cheating_logs: {
+        Row: {
+          details: Json | null
+          id: string
+          interview_id: string
+          severity: number | null
+          timestamp: string
+          type: Database["public"]["Enums"]["cheating_type"]
+        }
+        Insert: {
+          details?: Json | null
+          id?: string
+          interview_id: string
+          severity?: number | null
+          timestamp?: string
+          type: Database["public"]["Enums"]["cheating_type"]
+        }
+        Update: {
+          details?: Json | null
+          id?: string
+          interview_id?: string
+          severity?: number | null
+          timestamp?: string
+          type?: Database["public"]["Enums"]["cheating_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cheating_logs_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interviews: {
+        Row: {
+          candidate_id: string
+          cheating_flag: boolean | null
+          created_at: string
+          end_time: string | null
+          final_score: number | null
+          id: string
+          start_time: string
+          status: Database["public"]["Enums"]["interview_status"] | null
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          cheating_flag?: boolean | null
+          created_at?: string
+          end_time?: string | null
+          final_score?: number | null
+          id?: string
+          start_time?: string
+          status?: Database["public"]["Enums"]["interview_status"] | null
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          cheating_flag?: boolean | null
+          created_at?: string
+          end_time?: string | null
+          final_score?: number | null
+          id?: string
+          start_time?: string
+          status?: Database["public"]["Enums"]["interview_status"] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interviews_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          job_role: string | null
+          name: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_role?: string | null
+          name: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_role?: string | null
+          name?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      qa_dataset: {
+        Row: {
+          created_at: string
+          difficulty: string
+          id: string
+          job_role: string
+          keywords: string[] | null
+          question: string
+          reference_answer: string
+        }
+        Insert: {
+          created_at?: string
+          difficulty?: string
+          id?: string
+          job_role: string
+          keywords?: string[] | null
+          question: string
+          reference_answer: string
+        }
+        Update: {
+          created_at?: string
+          difficulty?: string
+          id?: string
+          job_role?: string
+          keywords?: string[] | null
+          question?: string
+          reference_answer?: string
+        }
+        Relationships: []
+      }
+      questions: {
+        Row: {
+          created_at: string
+          difficulty: string
+          id: string
+          job_role: string
+          question_text: string
+          reference_answer: string | null
+        }
+        Insert: {
+          created_at?: string
+          difficulty?: string
+          id?: string
+          job_role: string
+          question_text: string
+          reference_answer?: string | null
+        }
+        Update: {
+          created_at?: string
+          difficulty?: string
+          id?: string
+          job_role?: string
+          question_text?: string
+          reference_answer?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +236,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      cheating_type:
+        | "gaze_away"
+        | "multiple_faces"
+        | "tab_switch"
+        | "app_switch"
+        | "timeout"
+      interview_status: "pending" | "in_progress" | "completed"
+      user_role: "admin" | "candidate"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +370,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      cheating_type: [
+        "gaze_away",
+        "multiple_faces",
+        "tab_switch",
+        "app_switch",
+        "timeout",
+      ],
+      interview_status: ["pending", "in_progress", "completed"],
+      user_role: ["admin", "candidate"],
+    },
   },
 } as const
