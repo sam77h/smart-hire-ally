@@ -120,8 +120,8 @@ const AuthPage = () => {
     }
 
     toast({
-      title: "Registration Successful",
-      description: "Please check your email to confirm your account"
+      title: "Account created",
+      description: "You can log in now without email confirmation."
     });
 
     setIsLogin(true);
