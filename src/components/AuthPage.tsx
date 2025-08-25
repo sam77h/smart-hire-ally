@@ -12,8 +12,6 @@ interface AuthFormData {
   password: string;
   name: string;
   role: 'admin' | 'candidate';
-  jobRole: string;
-  adminCode: string;
 }
 
 const AuthPage = () => {
@@ -23,10 +21,14 @@ const AuthPage = () => {
     email: '',
     password: '',
     name: '',
-    role: 'candidate',
-    jobRole: '',
-    adminCode: ''
+    role: 'candidate'
   });
+
+  const [showCandidateSetup, setShowCandidateSetup] = useState(false);
+  const [selectedJobRole, setSelectedJobRole] = useState('');
+  const [selectedLevel, setSelectedLevel] = useState<'Junior' | 'Mid-level' | 'Senior' | ''>('');
+  const [isSavingSetup, setIsSavingSetup] = useState(false);
+  const [loggedInUserId, setLoggedInUserId] = useState<string | null>(null);
 
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -61,10 +63,11 @@ const AuthPage = () => {
       return;
     }
 
-    // Get user profile to determine role
+    // Get user profile to determine role and setup status
+    setLoggedInUserId(data.user.id);
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('role')
+      .select('role, job_role, level')
       .eq('user_id', data.user.id)
       .single();
 
@@ -77,38 +80,31 @@ const AuthPage = () => {
       return;
     }
 
-    // Redirect based on role
     if (profile.role === 'admin') {
       navigate('/admin');
-    } else {
-      navigate('/home');
-    }
-
-    toast({
-      title: "Login Successful",
-      description: `Welcome back!`
-    });
-  };
-
-  const handleSignup = async () => {
-    // Validate admin code if role is admin
-    if (formData.role === 'admin' && formData.adminCode !== 'ADMIN2024') {
-      toast({
-        title: "Invalid Admin Code",
-        description: "Please enter a valid admin code",
-        variant: "destructive"
-      });
+      toast({ title: "Login Successful", description: `Welcome back!` });
       return;
     }
 
+    // Candidate: require Job Role + Level selection
+    if (!profile.job_role || !profile.level) {
+      setShowCandidateSetup(true);
+      toast({ title: "Complete your profile", description: "Select your Job Role and Level" });
+      return;
+    }
+
+    navigate('/home');
+    toast({ title: "Login Successful", description: `Welcome back!` });
+  };
+
+  const handleSignup = async () => {
     const { data, error } = await supabase.auth.signUp({
       email: formData.email,
       password: formData.password,
       options: {
         data: {
           name: formData.name,
-          role: formData.role,
-          job_role: formData.role === 'candidate' ? formData.jobRole : null
+          role: formData.role
         },
         emailRedirectTo: `${window.location.origin}/`
       }
@@ -128,7 +124,6 @@ const AuthPage = () => {
       description: "Please check your email to confirm your account"
     });
 
-    // Switch to login mode
     setIsLogin(true);
   };
 
@@ -157,92 +152,122 @@ const AuthPage = () => {
         </CardHeader>
         
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input
-              type="email"
-              placeholder="Email"
-              value={formData.email}
-              onChange={(e) => handleInputChange('email', e.target.value)}
-              required
-              className="bg-background/50 border-primary/30"
-            />
-            
-            <Input
-              type="password"
-              placeholder="Password"
-              value={formData.password}
-              onChange={(e) => handleInputChange('password', e.target.value)}
-              required
-              className="bg-background/50 border-primary/30"
-            />
+          {showCandidateSetup ? (
+            <div className="space-y-4">
+              <Select value={selectedJobRole} onValueChange={setSelectedJobRole}>
+                <SelectTrigger className="bg-background/50 border-primary/30">
+                  <SelectValue placeholder="Select Job Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {jobRoles.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {role}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-            {!isLogin && (
-              <>
+              <Select value={selectedLevel} onValueChange={(value) => setSelectedLevel(value as any)}>
+                <SelectTrigger className="bg-background/50 border-primary/30">
+                  <SelectValue placeholder="Select Level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Junior">Junior</SelectItem>
+                  <SelectItem value="Mid-level">Mid-level</SelectItem>
+                  <SelectItem value="Senior">Senior</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Button 
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                disabled={isSavingSetup || !selectedJobRole || !selectedLevel}
+                onClick={async () => {
+                  if (!loggedInUserId) return;
+                  setIsSavingSetup(true);
+                  const { error } = await supabase
+                    .from('profiles')
+                    .update({ job_role: selectedJobRole, level: selectedLevel })
+                    .eq('user_id', loggedInUserId);
+                  setIsSavingSetup(false);
+                  if (error) {
+                    toast({
+                      title: 'Error',
+                      description: 'Failed to save your selection',
+                      variant: 'destructive'
+                    });
+                    return;
+                  }
+                  toast({ title: 'Profile updated', description: 'You can now start your interview.' });
+                  navigate('/home');
+                }}
+              >
+                {isSavingSetup ? 'Saving...' : 'Continue'}
+              </Button>
+            </div>
+          ) : (
+            <>
+              <form onSubmit={handleSubmit} className="space-y-4">
                 <Input
-                  type="text"
-                  placeholder="Full Name"
-                  value={formData.name}
-                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  type="email"
+                  placeholder="Email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  required
+                  className="bg-background/50 border-primary/30"
+                />
+                
+                <Input
+                  type="password"
+                  placeholder="Password"
+                  value={formData.password}
+                  onChange={(e) => handleInputChange('password', e.target.value)}
                   required
                   className="bg-background/50 border-primary/30"
                 />
 
-                <Select value={formData.role} onValueChange={(value: 'admin' | 'candidate') => handleInputChange('role', value)}>
-                  <SelectTrigger className="bg-background/50 border-primary/30">
-                    <SelectValue placeholder="Select Role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="candidate">Candidate</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
-                  </SelectContent>
-                </Select>
+                {!isLogin && (
+                  <>
+                    <Input
+                      type="text"
+                      placeholder="Full Name"
+                      value={formData.name}
+                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      required
+                      className="bg-background/50 border-primary/30"
+                    />
 
-                {formData.role === 'candidate' && (
-                  <Select value={formData.jobRole} onValueChange={(value) => handleInputChange('jobRole', value)}>
-                    <SelectTrigger className="bg-background/50 border-primary/30">
-                      <SelectValue placeholder="Select Job Role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {jobRoles.map((role) => (
-                        <SelectItem key={role} value={role}>
-                          {role}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <Select value={formData.role} onValueChange={(value: 'admin' | 'candidate') => handleInputChange('role', value)}>
+                      <SelectTrigger className="bg-background/50 border-primary/30">
+                        <SelectValue placeholder="Select Role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="candidate">Candidate</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </>
                 )}
 
-                {formData.role === 'admin' && (
-                  <Input
-                    type="password"
-                    placeholder="Admin Code"
-                    value={formData.adminCode}
-                    onChange={(e) => handleInputChange('adminCode', e.target.value)}
-                    required
-                    className="bg-background/50 border-primary/30"
-                  />
-                )}
-              </>
-            )}
+                <Button 
+                  type="submit" 
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Processing...' : (isLogin ? 'Login' : 'Register')}
+                </Button>
+              </form>
 
-            <Button 
-              type="submit" 
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-              disabled={isLoading}
-            >
-              {isLoading ? 'Processing...' : (isLogin ? 'Login' : 'Register')}
-            </Button>
-          </form>
-
-          <div className="mt-4 text-center">
-            <Button
-              variant="link"
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-primary hover:text-primary/80"
-            >
-              {isLogin ? "Don't have an account? Register" : "Already have an account? Login"}
-            </Button>
-          </div>
+              <div className="mt-4 text-center">
+                <Button
+                  variant="link"
+                  onClick={() => setIsLogin(!isLogin)}
+                  className="text-primary hover:text-primary/80"
+                >
+                  {isLogin ? "Don't have an account? Register" : "Already have an account? Login"}
+                </Button>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

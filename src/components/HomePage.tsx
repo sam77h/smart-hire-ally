@@ -15,6 +15,7 @@ interface ProfileData {
 
 const HomePage = () => {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -47,7 +48,10 @@ const HomePage = () => {
   };
 
   const handleStartInterview = () => {
-    navigate('/interview');
+    setIsStarting(true);
+    setTimeout(() => {
+      navigate('/interview');
+    }, 15000);
   };
 
   if (!profileData) return (
@@ -58,6 +62,14 @@ const HomePage = () => {
 
   return (
     <div className="min-h-screen bg-gradient-navy">
+      {isStarting && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="text-foreground">Preparing your interview questions...</p>
+          </div>
+        </div>
+      )}
       {/* Header */}
       <header className="border-b border-border/20 bg-background/5 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4">
